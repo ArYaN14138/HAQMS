@@ -13,6 +13,13 @@ This document serves as the official documentation of the security audit, databa
 
 ---
 
+## 🌐 Deployed Production Environment
+* **Live Web Application (Vercel)**: [https://haqm.vercel.app/](https://haqm.vercel.app/)
+* **Live API Services (Render)**: [https://haqms-w1xn.onrender.com/](https://haqms-w1xn.onrender.com/)
+* **Production Database (Supabase)**: Active Cloud Instance
+
+---
+
 ## 🔍 Section 1: Security Audit & Vulnerability Patches
 
 ### 1. Credential Logging & Plain-text Leakage

@@ -6,6 +6,13 @@ Candidates are tasked with auditing the codebase to identify, debug, profile, se
 
 ---
 
+## 🌐 Deployed Production Environment
+* **Live Web Application (Vercel)**: [https://haqm.vercel.app/](https://haqm.vercel.app/)
+* **Live API Services (Render)**: [https://haqms-w1xn.onrender.com/](https://haqms-w1xn.onrender.com/)
+* **Production Database (Supabase)**: Active Cloud Instance
+
+---
+
 ## 🛠️ Tech Stack
 - **Frontend**: Next.js (App Router, Tailwind CSS, Lucide icons, Context API)
 - **Backend**: Node.js + Express
