@@ -11,7 +11,8 @@
     "dev:frontend": "npm run dev --prefix frontend",
     "dev": "npx concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "npm install --prefix backend && npx prisma generate --schema=backend/prisma/schema.prisma",
-    "start": "npm start --prefix backend"
+    "start": "npm start --prefix backend",
+    "postinstall": "npm install --prefix backend && npx prisma generate --schema=backend/prisma/schema.prisma"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
