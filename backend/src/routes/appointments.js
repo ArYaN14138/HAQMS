@@ -18,32 +18,31 @@ router.get('/', authenticate, async (req, res) => {
     if (doctorId) where.doctorId = doctorId;
     if (status) where.status = status;
 
-    // Fetch core appointments
+    // Fetch appointments with relation details in a single DB query
     const appointments = await prisma.appointment.findMany({
       where,
+      include: {
+        patient: true,
+        doctor: true,
+      },
       orderBy: { appointmentDate: 'asc' },
     });
 
-    const detailedAppointments = [];
-
-    // N+1 triggers here: For every single appointment, we perform two extra queries!
-    for (const app of appointments) {
-      console.log(`[N+1 DB QUERY] Fetching Patient (${app.patientId}) and Doctor (${app.doctorId}) for Appointment ${app.id}`);
-      
-      const patient = await prisma.patient.findUnique({
-        where: { id: app.patientId },
-      });
-
-      const doctor = await prisma.doctor.findUnique({
-        where: { id: app.doctorId },
-      });
-
-      detailedAppointments.push({
-        ...app,
-        patient: patient ? { id: patient.id, name: patient.name, phoneNumber: patient.phoneNumber, age: patient.age, medicalHistory: patient.medicalHistory } : null,
-        doctor: doctor ? { id: doctor.id, name: doctor.name, specialization: doctor.specialization } : null,
-      });
-    }
+    const detailedAppointments = appointments.map(app => ({
+      ...app,
+      patient: app.patient ? { 
+        id: app.patient.id, 
+        name: app.patient.name, 
+        phoneNumber: app.patient.phoneNumber, 
+        age: app.patient.age, 
+        medicalHistory: app.patient.medicalHistory 
+      } : null,
+      doctor: app.doctor ? { 
+        id: app.doctor.id, 
+        name: app.doctor.name, 
+        specialization: app.doctor.specialization 
+      } : null,
+    }));
 
     res.json({
       success: true,
@@ -51,7 +50,7 @@ router.get('/', authenticate, async (req, res) => {
       appointments: detailedAppointments,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve appointments', details: error.message });
+    res.status(500).json({ error: 'Failed to retrieve appointments' });
   }
 });
 

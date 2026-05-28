@@ -15,20 +15,39 @@ export default function QueueMonitor() {
   // HARDCODED API BASE URL: Duplicated from AuthContext (code duplication smell)
   const API_BASE_URL = 'http://localhost:5000/api';
 
+  const [isPollingActive, setIsPollingActive] = useState(true);
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
+
   const fetchQueueData = async () => {
+    if (!isPollingActive) return;
     try {
-      // Insecure: Fetches queue without checking credentials (it's a public dashboard, which is fine, 
-      // but it uses the hardcoded API domain)
       const res = await fetch(`${API_BASE_URL}/queue`);
+      
+      // Handle 401 Unauthorized by stopping the polling loop immediately
+      if (res.status === 401) {
+        setIsPollingActive(false);
+        throw new Error('Access denied. Public queue board unauthorized. Polling stopped.');
+      }
+
       if (!res.ok) {
         throw new Error('Failed to retrieve active token queue.');
       }
       const data = await res.json();
       setTokens(data);
       setError('');
+      setConsecutiveErrors(0); // Reset errors on success
     } catch (err) {
       console.error('Queue poll fetch error:', err);
       setError(err.message);
+      
+      setConsecutiveErrors(prev => {
+        const nextErrors = prev + 1;
+        if (nextErrors >= 3) {
+          setIsPollingActive(false); // Stop polling after 3 consecutive failures
+          console.warn('[POLLING] Terminated due to consecutive API errors.');
+        }
+        return nextErrors;
+      });
     } finally {
       setLoading(false);
     }
@@ -38,21 +57,19 @@ export default function QueueMonitor() {
     // Initial fetch
     fetchQueueData();
 
-    // MEMORY LEAK BUG:
-    // This setInterval has NO cleanup function (does not return clearInterval).
-    // Every time this page is mounted, a new background polling timer is spun up.
-    // If the candidate navigates between Dashboard and Queue multiple times,
-    // dozens of parallel intervals will poll the database, causing memory bloat,
-    // state update crashes on unmounted components, and heavy server load.
+    if (!isPollingActive) return;
+
+    // MEMORY LEAK CLEANUP: Correctly clear the interval when the component unmounts
+    // Optimized: Polled every 10 seconds (10000ms) to reduce network and backend database load
     const intervalId = setInterval(() => {
-      console.log(`[POLL] Active Queue Poll #${refreshCount + 1} firing...`);
       fetchQueueData();
       setRefreshCount((prev) => prev + 1);
-    }, 3000);
+    }, 10000);
 
-    // Junior Developer Note: "Interval created, will run forever to keep dashboard fully synced!"
-    // Missing: return () => clearInterval(intervalId);
-  }, []); // Note that refreshCount dependency is missing too, causing stale closure on log!
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isPollingActive]);
 
   // Group tokens by doctor
   const groupedTokens = tokens.reduce((groups, token) => {

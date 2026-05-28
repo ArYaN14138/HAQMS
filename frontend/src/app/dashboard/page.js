@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/common/Navbar';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   Users, CalendarDays, Activity, Search, Sparkles, UserPlus, 
   Trash2, ClipboardList, TrendingUp, DollarSign, Award, Clock,
@@ -32,8 +33,20 @@ export default function Dashboard() {
   const [patients, setPatients] = useState([]);
   const [patientsLoading, setPatientsLoading] = useState(false);
   const [patientSearch, setPatientSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [patientGender, setPatientGender] = useState('All');
   const [patientsPagination, setPatientsPagination] = useState({ page: 1, totalPages: 1 });
+
+  // Debounce patient search to avoid querying the DB on every keystroke
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(patientSearch);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [patientSearch]);
   
   // Registration Form
   const [regName, setRegName] = useState('');
@@ -75,8 +88,8 @@ export default function Dashboard() {
   const fetchPatients = async (page = 1) => {
     setPatientsLoading(true);
     try {
-      // Inefficient memory pagination called from client
-      const res = await fetch(`${API_BASE_URL}/patients?page=${page}&limit=5&search=${patientSearch}&gender=${patientGender}`, {
+      // Inefficient memory pagination called from client - optimized in backend!
+      const res = await fetch(`${API_BASE_URL}/patients?page=${page}&limit=5&search=${debouncedSearch}&gender=${patientGender}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -95,12 +108,12 @@ export default function Dashboard() {
     }
   };
 
-  // Trigger Patient List Fetch (Every keystroke trigger re-renders parent! - Performance bug)
+  // Trigger Patient List Fetch on Debounced Search
   useEffect(() => {
     if (user.role === 'RECEPTIONIST' || user.role === 'ADMIN') {
       fetchPatients(1);
     }
-  }, [patientSearch, patientGender]);
+  }, [debouncedSearch, patientGender]);
 
   // Fetch Doctors for booking drop-down
   const fetchDoctorsDropdown = async () => {
@@ -124,10 +137,28 @@ export default function Dashboard() {
     e.preventDefault();
     setRegMessage('');
 
-    // INCONSISTENT VALIDATION: Receptionist form doesn't validate telephone structure on client, 
-    // leading to database pollution (e.g. text telephone values)
+    // CLIENT-SIDE VALIDATION: Enforce type checks, telephone format limits, and sensible boundaries
     if (!regName || !regPhone || !regAge) {
       setRegMessage('Error: Name, Age and Phone number are required.');
+      return;
+    }
+
+    // Phone format validation (7 to 15 digits, spaces, or hyphens)
+    if (!/^[+]?[0-9\s-]{7,15}$/.test(regPhone)) {
+      setRegMessage('Error: Invalid phone number format (should contain 7-15 digits, spaces, or hyphens).');
+      return;
+    }
+
+    // Age boundary validation
+    const parsedAge = parseInt(regAge);
+    if (isNaN(parsedAge) || parsedAge < 0 || parsedAge > 125) {
+      setRegMessage('Error: Age must be a positive integer between 0 and 125.');
+      return;
+    }
+
+    // Email format validation (if provided)
+    if (regEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) {
+      setRegMessage('Error: Invalid email address format.');
       return;
     }
 
@@ -174,6 +205,13 @@ export default function Dashboard() {
 
     if (!bookingPatientId || !bookingDoctorId || !bookingDate) {
       setBookingMessage('Error: All booking fields are required.');
+      return;
+    }
+
+    // Date slot validation: Must be in the future
+    const selectedDate = new Date(bookingDate);
+    if (selectedDate < new Date()) {
+      setBookingMessage('Error: Scheduled slot date must be in the future.');
       return;
     }
 
@@ -889,12 +927,9 @@ export default function Dashboard() {
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
                   <h4 className="font-bold text-slate-400 uppercase tracking-wider">Clinical Background Information</h4>
                   
-                  {/* FRONTEND CRASH BUG:
-                      Assuming medicalHistory is always populated. Accesses a method on a nullable property
-                      without optional chaining! If medicalHistory is null (which is the case for Batman, Clark Kent, etc.),
-                      this code throws: "Cannot read properties of null (reading 'toUpperCase')" and crashes the app! */}
+                  {/* FRONTEND CRASH FIXED: Use optional chaining and fallback text for nullable medical history */}
                   <p className="text-slate-700 dark:text-slate-300 leading-5 text-sm font-semibold">
-                    {selectedPatientHistory.medicalHistory.toUpperCase()}
+                    {selectedPatientHistory.medicalHistory?.toUpperCase() || 'NO CLINICAL BACKGROUND RECORDED'}
                   </p>
                 </div>
 
