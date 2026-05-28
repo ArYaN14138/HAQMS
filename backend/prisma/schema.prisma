@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = "postgresql://postgres:ARYan%407393960@db.llsffzstfqkgxvtciuha.supabase.co:5432/postgres"
 }
 
 enum Role {
