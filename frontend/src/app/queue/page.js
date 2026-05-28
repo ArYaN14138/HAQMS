@@ -13,7 +13,8 @@ export default function QueueMonitor() {
   const [refreshCount, setRefreshCount] = useState(0);
 
   // HARDCODED API BASE URL: Duplicated from AuthContext (code duplication smell)
-  const API_BASE_URL = 'http://localhost:5000/api';
+  // PRODUCTION DYNAMIC API URL: Use environment variable, fallback to localhost for dev
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
   const [isPollingActive, setIsPollingActive] = useState(true);
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
