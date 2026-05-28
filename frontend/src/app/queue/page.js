@@ -14,7 +14,7 @@ export default function QueueMonitor() {
 
   // HARDCODED API BASE URL: Duplicated from AuthContext (code duplication smell)
   // PRODUCTION DYNAMIC API URL: Use environment variable, fallback to localhost for dev
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://haqms-w1xn.onrender.com/api';
 
   const [isPollingActive, setIsPollingActive] = useState(true);
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);

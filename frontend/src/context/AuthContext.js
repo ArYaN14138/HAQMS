@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
   // This violates production standards and prevents simple domain config, but serves as
   // a perfect exercise for internship candidates to move to environment variables.
   // PRODUCTION DYNAMIC API URL: Use environment variable, fallback to localhost for dev
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://haqms-w1xn.onrender.com/api';
 
   useEffect(() => {
     // Check for stored token and user on initialization
