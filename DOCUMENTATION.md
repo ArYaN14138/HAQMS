@@ -122,6 +122,41 @@ This document serves as the official documentation of the security audit, databa
 * **Design Features**: Uses a glassmorphic user profile card, responsive grids, diagnostic status badges, and separate chronological timelines for appointments and active queue tokens.
 
 ---
+## 🧠 Section 6: Approach & Technical Reasoning behind Major Decisions
+
+### 1. Security-First Architecture
+* **Reasoning**: Evaluated the codebase starting with data confidentiality. Leaky error logs, unencrypted credential printing, and SQL injection flaws pose direct threats to regulatory healthcare standards. 
+* **Approach**: Prioritized immediate remediation of plain-text passwords and parameterized all relational SQL inputs. REST API errors were sanitized so database syntax is never leaked to client logs.
+
+### 2. Enforcing Relational Consistency at the Database Layer
+* **Reasoning**: Solved the physician double-booking vulnerability by adding a composite unique index (`@@unique([doctorId, appointmentDate])`) directly inside `schema.prisma` rather than writing complex check routines on the API level.
+* **Approach**: Let the PostgreSQL engine natively enforce business rules. This guarantees data consistency at scale, even if multiple API endpoints attempt concurrent bookings.
+
+### 3. Concurrency Protection & Transaction Integrity
+* **Reasoning**: A 350ms delay in queue token generation was originally added as a "widen-window" logic to slow down concurrent API calls. This was a classic anti-pattern that did not prevent race conditions.
+* **Approach**: Wiped out the artificial delays and established database-level row locks (`SELECT FOR UPDATE`) within an atomic Prisma transaction (`prisma.$transaction`). This locks the targeted physician record during the calculation, guaranteeing increment safety under high concurrent traffic.
+
+### 4. Native Database-Level Slicing and Joins
+* **Reasoning**: Sequential async calls and manual nested loops block Node's single-threaded event loop. In-memory array slicing on high-volume queries like `/api/patients` degrades performance exponentially as the dataset grows.
+* **Approach**: Refactored loops into SQL relation joins (`include: { patient: true, doctor: true }`), utilized `Promise.all` for parallel database lookups, and implemented SQL paging operators (`skip`/`take`), bringing response times from $O(N)$ down to a flat $O(1)$ database roundtrip.
+
+---
+
+## ⚠️ Section 7: Remaining Known Issues & Future Recommendations
+
+### 1. Lack of HTTPS in Local Environments
+* **Issue**: Local docker-compose and orchestrator configurations use unencrypted HTTP for service inter-communication.
+* **Recommendation**: Implement local SSL certificates (e.g. self-signed via `mkcert`) or reverse-proxies (like Nginx/Traefik) for local development to simulate strict production environment handshakes.
+
+### 2. Transition from Polling to WebSockets / Event Streams
+* **Issue**: The Live Public Queue Monitor (`/queue`) relies on 10-second client-side interval polling. Under heavy concurrent traffic, this places unnecessary query loads on the database.
+* **Recommendation**: Refactor the backend/frontend communication to utilize **WebSockets** (Socket.io) or **Server-Sent Events (SSE)**. This ensures real-time updates are pushed instantly only when queue state changes.
+
+### 3. Comprehensive Test Automation Suites
+* **Issue**: The codebase currently lacks unit, integration, or end-to-end browser tests to assert correct role authorizations and queue token transactions.
+* **Recommendation**: Integrate a robust testing framework (such as Jest or Playwright) to run automated unit checks on authentication middleware and concurrency locks prior to continuous deployment pipelines.
+
+---
 
 ## 📈 Verification & Compilation Summary
 1. **Migrations & Seeding**: Successfully applied database schema updates and seeded initial records.
