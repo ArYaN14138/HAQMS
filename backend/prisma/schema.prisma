@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres:ARYan%407393960@db.llsffzstfqkgxvtciuha.supabase.co:5432/postgres"
+  url      = "postgresql://postgres:ARYan%407393960@db.llsffzstfqkgxvtciuha.supabase.co:5432/postgres?sslmode=require&connect_timeout=30"
 }
 
 enum Role {
